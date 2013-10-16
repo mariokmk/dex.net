@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{2B7D42B6-F491-4294-A052-8A30B16EFB9A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>dex.net</RootNamespace>
+    <AssemblyName>dex.net</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>none</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Mono.C5" />
+    <Reference Include="Mono.Cairo" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="AccessFlag.cs" />
+    <Compile Include="Dex.cs" />
+    <Compile Include="Disassembler.cs" />
+    <Compile Include="OpCode.cs" />
+    <Compile Include="TypeCode.cs" />
+    <Compile Include="EncodedValueType.cs" />
+    <Compile Include="EncodedValue.cs" />
+    <Compile Include="DexHeader.cs" />
+    <Compile Include="Prototype.cs" />
+    <Compile Include="Class.cs" />
+    <Compile Include="Method.cs" />
+    <Compile Include="Field.cs" />
+    <Compile Include="Annotation.cs" />
+    <Compile Include="Writers\ClassDisplayOptions.cs" />
+    <Compile Include="Instructions.cs" />
+    <Compile Include="Leb128.cs" />
+    <Compile Include="Writers\TypeHelper.cs" />
+    <Compile Include="Writers\EnhancedDexWriter.cs" />
+    <Compile Include="Writers\IDexWriter.cs" />
+    <Compile Include="Writers\PlainDexWriter.cs" />
+    <Compile Include="Writers\Indentation.cs" />
+    <Compile Include="WritersFactory.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Folder Include="Writers\" />
+  </ItemGroup>
+</Project>
