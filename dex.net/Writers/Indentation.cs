@@ -44,7 +44,7 @@ namespace dex.net
 			return indent;
 		}
 
-		public string ToString ()
+		public override string ToString ()
 		{
 			if (_level <= 0) {
 				return string.Empty;
