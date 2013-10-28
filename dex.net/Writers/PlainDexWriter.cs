@@ -30,6 +30,11 @@ namespace dex.net
 			return "Plain Dex";
 		}
 
+		public string GetExtension ()
+		{
+			return ".pdex";
+		}
+
 		public void WriteOutMethod (Class dexClass, Method method, TextWriter output, Indentation indent, bool renderOpcodes=false)
 		{
 			var stringIndent = indent.ToString ();

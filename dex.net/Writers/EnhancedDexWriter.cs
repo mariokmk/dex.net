@@ -30,6 +30,11 @@ namespace dex.net
 		{
 			return "Dex";
 		}
+		
+		public string GetExtension ()
+		{
+			return ".dex";
+		}
 
 		public void WriteOutMethod (Class dexClass, Method method, TextWriter output, Indentation indent, bool renderOpcodes=false)
 		{
@@ -235,18 +240,10 @@ namespace dex.net
 			foreach (var opcode in method.GetInstructions()) {
 				switch (opcode.Instruction) {
 				case Instructions.Goto:
-					var gotoOpCode = (GotoOpCode)opcode;
-					jumpTable.AddTarget(gotoOpCode.OpCodeOffset, gotoOpCode.GetTargetAddress(), "goto_", ref gotoCounter);
-					break;
-
 				case Instructions.Goto16:
-					var goto16OpCode = (Goto16OpCode)opcode;
-					jumpTable.AddTarget(goto16OpCode.OpCodeOffset, goto16OpCode.GetTargetAddress(), "goto_", ref gotoCounter);
-					break;
-
 				case Instructions.Goto32:
-					var goto32OpCode = (Goto32OpCode)opcode;
-					jumpTable.AddTarget(goto32OpCode.OpCodeOffset, goto32OpCode.GetTargetAddress(), "goto_", ref gotoCounter);
+					var gotoOpCode = (dynamic)opcode;
+					jumpTable.AddTarget(gotoOpCode.OpCodeOffset, gotoOpCode.GetTargetAddress(), "goto_", ref gotoCounter);
 					break;
 
 				case Instructions.PackedSwitch:

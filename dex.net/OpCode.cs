@@ -322,7 +322,7 @@ namespace dex.net
 	public class ReturnValueOpCode : OpCode
 	{
 		// return value register-pair (8 bits)
-		protected byte Value;
+		internal byte Value;
 
 		/// <summary>
 		/// Constructor for all return-* operations
@@ -750,8 +750,8 @@ namespace dex.net
 	/// </summary>
 	public class FillArrayDataOpCode : Register8OpCode, DataExtendedOpCode
 	{
-		protected ushort TypeIndex;
-		protected ulong[] Values;
+		internal ushort TypeIndex;
+		internal ulong[] Values;
 		protected ushort ValueWidth;
 
 		public long DataTableOffset { get; private set; }
@@ -824,10 +824,14 @@ namespace dex.net
 		}
 	}
 
+	public interface IGoto : JumpOpCode
+	{
+	}
+
 	/// <summary>
 	/// Parent class for goto operations
 	/// </summary>
-	public abstract class AbsGoto<T> : OpCode, JumpOpCode where T : IComparable
+	public abstract class AbsGoto<T> : OpCode, IGoto where T : IComparable
 	{
 		internal T Offset;
 

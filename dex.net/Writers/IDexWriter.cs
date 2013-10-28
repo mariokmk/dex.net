@@ -11,5 +11,6 @@ namespace dex.net
 		void WriteOutMethod (Class dexClass, Method method, TextWriter output, Indentation indent, bool renderOpcodes=false);
 		void WriteOutClass (Class dexClass, ClassDisplayOptions options, TextWriter output);
 		string GetName ();
+		string GetExtension ();
 	}
 }
