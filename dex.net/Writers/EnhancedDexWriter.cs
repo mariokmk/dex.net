@@ -143,6 +143,27 @@ namespace dex.net
 			output.WriteLine ("}");
 		}
 
+		public List<HightlightInfo> GetCodeHightlight ()
+		{
+			var highlight = new List<HightlightInfo> ();
+
+			// Annotation
+			highlight.Add (new HightlightInfo("@.+", 0x81, 0x5B, 0xA4));
+
+			// Keywords
+			highlight.Add (new HightlightInfo("\\b(return-void|return|goto|packed-switch|sparse-switch|filled-new-array/range|new|instance-of|check-cast|const-class|fill-array-data|move-result-object|move-result|move-exception|try|catch|throw|extends|implements)\\b", 158, 28, 78));
+
+			// Strings
+			highlight.Add (new HightlightInfo("(\".*?\")", 58, 92, 120));
+
+			// Integers
+			highlight.Add (new HightlightInfo("\\b(0x[\\da-f]+|\\d+)\\b", 252, 120, 8));
+
+			// Labels
+			highlight.Add (new HightlightInfo("\\s(:.+)\\b", 55, 193, 58));
+
+			return highlight;
+		}
 
 		#endregion
 

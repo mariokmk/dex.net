@@ -132,6 +132,31 @@ namespace dex.net
 			}
 		}
 
+		public List<HightlightInfo> GetCodeHightlight ()
+		{
+			var highlight = new List<HightlightInfo> ();
+
+			// Directive
+			highlight.Add (new HightlightInfo("^\\s*(\\..*?)\\s", 0x81, 0x5B, 0xA4));
+
+			// Keywords
+			highlight.Add (new HightlightInfo("^\\s+\\d+\\s+(.*?)\\s", 158, 28, 78));
+
+			// Integers
+			highlight.Add (new HightlightInfo("\\s(#?-?\\d+)", 252, 120, 8));
+
+			// Offset
+			highlight.Add (new HightlightInfo("^\\s+(\\d+)", 135, 135, 129));
+
+			// Strings
+			highlight.Add (new HightlightInfo("(\".*?\")", 58, 92, 120));
+
+			// Labels
+			highlight.Add (new HightlightInfo("\\s(:.+)\\b", 55, 193, 58));
+
+			return highlight;
+		}
+
 		#endregion
 
 		
