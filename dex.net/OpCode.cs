@@ -569,7 +569,7 @@ namespace dex.net
 	{
 		internal ushort TypeIndex;
 
-		internal CheckCastOpCode (BinaryReader reader) : base (reader, "const-class", Instructions.CheckCast)
+		internal CheckCastOpCode (BinaryReader reader) : base (reader, "check-cast", Instructions.CheckCast)
 		{
 			TypeIndex = reader.ReadUInt16();
 		}

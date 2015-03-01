@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Collections;
 using System.Text;
+using System.Threading;
 
 /// <summary>
 /// Dex.NET - Mario Kosmiskas
@@ -12,6 +13,25 @@ using System.Text;
 /// </summary>
 namespace dex.net
 {
+	internal class DexReader : BinaryReader
+	{
+		long ReturnPos;
+		object Lock;
+
+		public DexReader(Stream stream, long position, object theLock) : base(stream, System.Text.Encoding.Default, true) {
+			ReturnPos = stream.Position;
+			stream.Position = position;
+			Lock = theLock;
+		}
+
+		public new void Dispose ()
+		{
+			BaseStream.Position = ReturnPos;
+			Monitor.Exit (Lock);
+			base.Dispose ();
+		}
+	}
+
 	/// <summary>
 	/// Dex
 	/// </summary>
@@ -24,9 +44,8 @@ namespace dex.net
 	public class Dex : IDisposable
 	{
 		private Dictionary<TypeCode,MapItem> SectionsMap;
-		internal Stream DexStream;
-		internal DexHeader DexHeader;
-		internal BinaryReader DexReader;
+		private Stream DexStream;
+		private DexHeader DexHeader;
 
 		public Dex (Stream dexStream)
 		{
@@ -35,8 +54,7 @@ namespace dex.net
 			}
 
 			DexStream = dexStream;
-			DexHeader = DexHeader.Parse(DexStream);
-			DexReader = new BinaryReader (dexStream);
+			DexHeader = DexHeader.Parse(dexStream);
 			SectionsMap = ReadSectionsMap();
 		}
 
@@ -50,7 +68,13 @@ namespace dex.net
 		}
 
 		#endregion
-		
+
+		internal BinaryReader GetReader(long pos)
+		{
+			Monitor.Enter (this);
+			return new DexReader (DexStream, pos, this);
+		}
+
 		/// <summary>
 		/// Return a String given an index
 		/// </summary>
@@ -69,9 +93,9 @@ namespace dex.net
 			// Find the offset of the String ID in the Strings table 
 			// and position the stream at the entry
 			var offset = DexHeader.StringIdsOffset + (index*4);
-			DexStream.Seek(offset, SeekOrigin.Begin);
-
-			return ReadString(DexReader.ReadUInt32());
+			using (var reader = GetReader (offset)) {
+				return ReadString(reader.ReadUInt32(), reader);
+			}
 		}
 
 		/// <summary>
@@ -98,12 +122,15 @@ namespace dex.net
 		/// <param name='offset'>
 		/// Offset of the string from the beginning of the file
 		/// </param>
-		internal string ReadString (uint offset)
+		/// <param name='reader'>
+		/// stream reader to parse values from the Dex file
+		/// </param>
+		private string ReadString (uint offset, BinaryReader reader)
 		{
-			DexStream.Seek(offset, SeekOrigin.Begin);
+			reader.BaseStream.Position = offset;
 
 			// find out the length of the decoded string
-			var stringLength = (int)Leb128.ReadUleb(DexReader);
+			var stringLength = (int)Leb128.ReadUleb(reader);
 
 			// strings are encoded in MUTF-8 format
 			char[] chararr = new char[stringLength];
@@ -111,7 +138,7 @@ namespace dex.net
 			int chararr_count=0;
 
 			while (chararr_count < stringLength) {
-				c = DexReader.ReadByte();
+				c = reader.ReadByte();
 
 				switch (c >> 4) {
 					/* 0xxxxxxx */
@@ -129,7 +156,7 @@ namespace dex.net
 					/* 110x xxxx || 10xx xxxx */
 					case 12: 
 					case 13:
-						char2 = DexReader.ReadByte();
+						char2 = reader.ReadByte();
 						if ((char2 & 0xC0) != 0x80) {
 							throw new InvalidDataException("MUTF-8 parsing error. 2nd byte must be 10xxxxxx. Dex offset:" + (DexStream.Position-2));
 						}
@@ -138,8 +165,8 @@ namespace dex.net
 
 					/* 1110 xxxx || 10xx xxxx || 10xx xxxx */
 					case 14:
-						char2 = DexReader.ReadByte();
-						char3 = DexReader.ReadByte();
+						char2 = reader.ReadByte();
+						char3 = reader.ReadByte();
 						if (((char2 & 0xC0) ^ (char3 & 0xC0)) != 0) {
 							throw new InvalidDataException("MUTF-8 parsing error. Both bytes must be 10xxxxxx. Dex offset:" + (DexStream.Position-3));
 						}
@@ -161,26 +188,26 @@ namespace dex.net
 		private Dictionary<TypeCode,MapItem> ReadSectionsMap ()
 		{
 			// Position the stream at the beginning of the map
-			DexStream.Seek (DexHeader.MapOffset, SeekOrigin.Begin);
+			using (var reader = GetReader (DexHeader.MapOffset)) {
+				// Number of entries in the map
+				var count = reader.ReadUInt32();
 
-			// Number of entries in the map
-			var count = DexReader.ReadUInt32();
+				// Read all entries from the DEX and add to the dictionary
+				var map = new Dictionary<TypeCode,MapItem> ();
+				for (int i=0; i<count; i++) {
+					var itemType = (TypeCode)reader.ReadUInt16();
+					// Skip the unused field
+					reader.ReadUInt16();
 
-			// Read all entries from the DEX and add to the dictionary
-			var map = new Dictionary<TypeCode,MapItem> ();
-			for (int i=0; i<count; i++) {
-				var itemType = (TypeCode)DexReader.ReadUInt16();
-				// Skip the unused field
-				DexReader.ReadUInt16();
+					MapItem item = new MapItem();
+					item.Count = reader.ReadUInt32();
+					item.Offset = reader.ReadUInt32();
 
-				MapItem item = new MapItem();
-				item.Count = DexReader.ReadUInt32();
-				item.Offset = DexReader.ReadUInt32();
+					map.Add(itemType, item);
+				}
 
-				map.Add(itemType, item);
+				return map;
 			}
-
-			return map;
 		}
 
 		public Prototype GetPrototype (uint id)
@@ -188,9 +215,9 @@ namespace dex.net
 			if (id >= DexHeader.PrototypeIdsCount)
 				throw new ArgumentException (string.Format ("Prototype Id {0} out of range 0-{1}", id, DexHeader.PrototypeIdsCount));
 
-			DexStream.Position = DexHeader.PrototypeIdsOffset + (id * 12);
-
-			return new Prototype (this, DexReader);
+			using (var reader = GetReader (DexHeader.PrototypeIdsOffset + (id * 12))) {
+				return new Prototype (this, reader);
+			}
 		}
 
 		internal List<ushort> ReadTypeList (uint offset)
@@ -200,16 +227,16 @@ namespace dex.net
 				return new List<ushort>();
 			}
 
-			DexStream.Seek (offset, SeekOrigin.Begin);
+			using (var reader = GetReader (offset)) {
+				var count = reader.ReadUInt32();
+				var types = new List<ushort> ((int)count);
 
-			var count = DexReader.ReadUInt32();
-			var types = new List<ushort> ((int)count);
+				while (count-- > 0) {
+					types.Add(reader.ReadUInt16());
+				}
 
-			while (count-- > 0) {
-				types.Add(DexReader.ReadUInt16());
+				return types;
 			}
-
-			return types;
 		}
 
 		public IEnumerable<Prototype> GetPrototypes ()
@@ -224,9 +251,9 @@ namespace dex.net
 			if (id > DexHeader.FieldIdsCount)
 				throw new ArgumentException (string.Format ("Field Id {0} out of range 0-{1}", id, DexHeader.FieldIdsCount));
 
-			DexStream.Position = DexHeader.FieldIdsOffset + (id * 8);
-
-			return new Field (id, this, DexReader);
+			using (var reader = GetReader(DexHeader.FieldIdsOffset + (id * 8))) {
+				return new Field (id, this, reader);
+			}
 		}
 
 		public IEnumerable<Field> GetFields ()
@@ -241,9 +268,9 @@ namespace dex.net
 			if (id >= DexHeader.MethodIdsCount)
 				throw new ArgumentException (string.Format ("Method Id {0} out of range 0-{1}", id, DexHeader.MethodIdsCount));
 
-			DexStream.Seek (DexHeader.MethodIdsOffset + (id * 8), SeekOrigin.Begin);
-
-			return new Method (id, this, DexReader, codeOffset);
+			using (var reader = GetReader (DexHeader.MethodIdsOffset + (id * 8))) {
+				return new Method (id, this, reader, codeOffset);
+			}
 		}
 
 		public IEnumerable<Method> GetMethods ()
@@ -263,9 +290,9 @@ namespace dex.net
 			if (id >= DexHeader.ClassDefinitionsCount)
 				throw new ArgumentException (string.Format ("Class Id {0} out of range 0-{1}", id, DexHeader.ClassDefinitionsCount-1));
 
-			DexStream.Seek (DexHeader.ClassDefinitionsOffset + (id * 32), SeekOrigin.Begin);
-
-			return new Class (this, DexReader);
+			using (var reader = GetReader (DexHeader.ClassDefinitionsOffset + (id * 32))) {
+				return new Class (this, reader);
+			}
 		}
 
 		public IEnumerable<Class> GetClasses ()
@@ -275,25 +302,14 @@ namespace dex.net
 			}
 		}
 
-		internal OpCode Decode (ref long offset) {
-			DexStream.Position = offset;
-
-			var opcode = Disassembler.Decode(DexReader);
-			opcode.OpCodeOffset = offset;
-
-			offset = DexStream.Position;
-
-			return opcode;
-		}
-
 		public string GetTypeName (uint id)
 		{
 			if (id >= DexHeader.TypeIdsCount)
 				throw new ArgumentException(string.Format("Type Id {0} out of range 0-{1}", id, DexHeader.TypeIdsCount));
 
-			DexStream.Seek (DexHeader.TypeIdsOffset + (id*4), SeekOrigin.Begin);
-
-			return TypeToString(GetString(DexReader.ReadUInt32()));
+			using (var reader = GetReader (DexHeader.TypeIdsOffset + (id*4))) {
+				return TypeToString(GetString(reader.ReadUInt32()));
+			}
 		}
 
 		public IEnumerable<string> GetTypeNames ()

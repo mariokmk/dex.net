@@ -7,6 +7,9 @@ using System.IO;
 /// Provided under the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 /// Commercial use requires attribution
 /// </summary>
+using System.Text;
+
+
 namespace dex.net
 {
 	public class DexHeader
@@ -69,6 +72,8 @@ namespace dex.net
 		internal uint LinkSize;
 		internal uint LinkOffset;
 
+		internal string ApiVersion;
+
 		private DexHeader ()
 		{
 		}
@@ -79,13 +84,16 @@ namespace dex.net
 			var reader = new BinaryReader(dexStream);
 
 			// Check for the DEX signature in the first bytes of the file
-			ulong magic = reader.ReadUInt64();
-			if (magic != 14974455192773988)
-			{
-				throw new ArgumentException(string.Format("Invalid DEX file - wrong signature. Found {0}", magic));
+			var fileMagic = Encoding.UTF8.GetString (reader.ReadBytes (4));
+			if (fileMagic.Equals("dey\n")) {
+				throw new ArgumentException("Optimized DEX files are not supported");
+			} else if (!fileMagic.Equals("dex\n")) {
+				throw new ArgumentException(string.Format("Invalid DEX file - wrong signature. Found {0}", fileMagic));
 			}
 
+
 			DexHeader header = new DexHeader();
+			header.ApiVersion = Encoding.UTF8.GetString (reader.ReadBytes (4));
 			header.Checksum = reader.ReadUInt32();
 			header.Signature = reader.ReadBytes(20);
 			header.FileSize = reader.ReadUInt32();
@@ -137,14 +145,13 @@ ClassDefinitionsCount={18}
 ClassDefinitionsOffset={19}
 DataSize={20}
 DataOffset={21}
+ApiVersion={22}
 ", 
 					   Checksum, Signature, FileSize, HeaderSize, IsLittleEndian,
 					   LinkSize, LinkOffset, MapOffset, StringIdsCount, StringIdsOffset,
 					   TypeIdsCount, TypeIdsOffset, PrototypeIdsCount, PrototypeIdsOffset,
 					   FieldIdsCount, FieldIdsOffset, MethodIdsCount, MethodIdsOffset,
-					   ClassDefinitionsCount, ClassDefinitionsOffset, DataSize, DataOffset);
-
+					   ClassDefinitionsCount, ClassDefinitionsOffset, DataSize, DataOffset, ApiVersion);
 		}
 	}
 }
-

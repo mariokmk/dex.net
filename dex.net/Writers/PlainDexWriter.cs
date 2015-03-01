@@ -75,6 +75,18 @@ namespace dex.net
 				foreach (var opcode in method.GetInstructions()) {
 					offset = opcode.OpCodeOffset;
 
+					// Test for the end of the current try block
+					if (currentTryBlock != null && !currentTryBlock.IsInBlock(offset)) {
+						WriteOutCatchStatements (output, indent, currentTryBlock);
+						activeTryBlocks.Remove (currentTryBlock);
+
+						if (activeTryBlocks.Count > 0) {
+							currentTryBlock = activeTryBlocks [activeTryBlocks.Count - 1];
+						} else {
+							currentTryBlock = null;
+						}
+					}
+
 					// Should open a new try block?
 					if (method.TryCatchBlocks != null && method.TryCatchBlocks.Length > lastTryBlockId) {
 						var tryBlock = method.TryCatchBlocks [lastTryBlockId];
@@ -89,29 +101,25 @@ namespace dex.net
 					if (opcode.Instruction != Instructions.Nop) {
 						output.WriteLine (string.Format("{0}{1}  {2}", stringIndent,offset.ToString().PadLeft(12, ' '), opcode.ToString()));
 					}
-
-					// Test for the end of the current try block
-					if (currentTryBlock != null && !currentTryBlock.IsInBlock(_dex.DexStream.Position)) {
-						output.WriteLine (string.Format ("{0}{1}   {2}", stringIndent, "".PadLeft (12, ' '), ".CATCH"));
-						indent++;
-						foreach (var catchBlock in currentTryBlock.Handlers) {
-							output.WriteLine (string.Format ("{0}{1}   {2} address:{3}", indent.ToString(), "".PadLeft (12, ' '), 
-							                                 catchBlock.TypeIndex == 0 ? "ALL" : _dex.GetTypeName(catchBlock.TypeIndex), 
-							                                 catchBlock.HandlerOffset));
-						}
-						indent--;
-
-						activeTryBlocks.Remove (currentTryBlock);
-
-						if (activeTryBlocks.Count > 0) {
-							currentTryBlock = activeTryBlocks [activeTryBlocks.Count - 1];
-						} else {
-							currentTryBlock = null;
-						}
-					}
 				}
+				if (currentTryBlock != null) {
+					WriteOutCatchStatements (output, indent, currentTryBlock);
+				}
+
 				indent--;
 			}
+		}
+
+		private void WriteOutCatchStatements(TextWriter output, Indentation indent, TryCatchBlock currentTryBlock)
+		{
+			output.WriteLine (string.Format ("{0}{1}   {2}", indent.ToString (), "".PadLeft (12, ' '), ".CATCH"));
+			indent++;
+			foreach (var catchBlock in currentTryBlock.Handlers) {
+				output.WriteLine (string.Format ("{0}{1}   {2} address:{3}", indent.ToString(), "".PadLeft (12, ' '), 
+					catchBlock.TypeIndex == 0 ? "ALL" : _dex.GetTypeName(catchBlock.TypeIndex), 
+					catchBlock.HandlerOffset));
+			}
+			indent--;
 		}
 
 		public void WriteOutClass (Class dexClass, ClassDisplayOptions options, TextWriter output)

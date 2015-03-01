@@ -3,12 +3,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>10.0.0</ProductVersion>
+    <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{2B7D42B6-F491-4294-A052-8A30B16EFB9A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>dex.net</RootNamespace>
     <AssemblyName>dex.net</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -40,7 +41,9 @@
     <Compile Include="Dex.cs" />
     <Compile Include="Disassembler.cs" />
     <Compile Include="OpCode.cs" />
-    <Compile Include="TypeCode.cs" />
+    <Compile Include="TypeCode.cs">
+      <DependentUpon>Method.cs</DependentUpon>
+    </Compile>
     <Compile Include="EncodedValueType.cs" />
     <Compile Include="EncodedValue.cs" />
     <Compile Include="DexHeader.cs" />
@@ -58,6 +61,7 @@
     <Compile Include="Writers\PlainDexWriter.cs" />
     <Compile Include="Writers\Indentation.cs" />
     <Compile Include="WritersFactory.cs" />
+    <Compile Include="Writers\Graph.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

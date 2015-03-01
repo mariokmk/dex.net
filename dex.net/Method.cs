@@ -143,7 +143,13 @@ namespace dex.net
 			var finalOffset = CodeOffset+(CodeLength*2);
 
 			while (offset < finalOffset) {
-				var opcode = Dex.Decode (ref offset);
+				OpCode opcode = null;
+				using (var reader = Dex.GetReader (offset)) {
+					opcode = Disassembler.Decode(reader);
+					opcode.OpCodeOffset = offset;
+
+					offset = reader.BaseStream.Position;
+				}
 
 				// Instruction adds a data table at the end of the method
 				// must skip all data tables since they are not instructions
@@ -195,6 +201,11 @@ namespace dex.net
 		public bool IsInBlock(long offset) 
 		{
 			return (offset >= StartAddress*2+_codeOffset) && (offset <= LastInstructionOffset());
+		}
+
+		public long StartInstructionOffset()
+		{
+			return StartAddress*2+_codeOffset;
 		}
 
 		public long LastInstructionOffset()

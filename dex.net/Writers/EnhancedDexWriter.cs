@@ -64,7 +64,6 @@ namespace dex.net
 
 				foreach (var opcode in method.GetInstructions()) {
 					long offset = opcode.OpCodeOffset;
-					long nextInsnOffset = _dex.DexStream.Position;
 
 					// Print out jump target labels
 					while (offset == targets.Current) {
@@ -73,6 +72,18 @@ namespace dex.net
 
 						if (!targets.MoveNext ()) {
 							break;
+						}
+					}
+
+					// Test for the end of the current try block
+					if (currentTryBlock != null && !currentTryBlock.IsInBlock(offset)) {
+						WriteOutCatchStatements(output, indent, currentTryBlock, jumpTable);
+						activeTryBlocks.Remove (currentTryBlock);
+
+						if (activeTryBlocks.Count > 0) {
+							currentTryBlock = activeTryBlocks [activeTryBlocks.Count - 1];
+						} else {
+							currentTryBlock = null;
 						}
 					}
 
@@ -95,31 +106,26 @@ namespace dex.net
 						output.Write (indent.ToString ());
 						output.WriteLine(OpCodeToString(opcode, dexClass, method, jumpTable));
 					}
-
-					// Test for the end of the current try block
-					if (currentTryBlock != null && !currentTryBlock.IsInBlock(nextInsnOffset)) {
-						indent--;
-						foreach (var catchBlock in currentTryBlock.Handlers) {
-							output.WriteLine (string.Format ("{0}catch({1}) :{2}", 
-							                                 indent.ToString(),
-							                                 catchBlock.TypeIndex == 0 ? "ALL" : _dex.GetTypeName(catchBlock.TypeIndex),
-							                                 jumpTable.GetHandlerLabel(catchBlock)));
-						}
-
-						activeTryBlocks.Remove (currentTryBlock);
-
-						if (activeTryBlocks.Count > 0) {
-							currentTryBlock = activeTryBlocks [activeTryBlocks.Count - 1];
-						} else {
-							currentTryBlock = null;
-						}
-					}
+				}
+				if (currentTryBlock != null) {
+					WriteOutCatchStatements (output, indent, currentTryBlock, jumpTable);
 				}
 				indent--;
 			}
 
 			output.Write (indent.ToString());
 			output.WriteLine ("}");
+		}
+
+		private void WriteOutCatchStatements(TextWriter output, Indentation indent, TryCatchBlock currentTryBlock, JumpTable jumpTable)
+		{
+			indent--;
+			foreach (var catchBlock in currentTryBlock.Handlers) {
+				output.WriteLine (string.Format ("{0}catch({1}) :{2}", 
+					indent.ToString(),
+					catchBlock.TypeIndex == 0 ? "ALL" : _dex.GetTypeName(catchBlock.TypeIndex),
+					jumpTable.GetHandlerLabel(catchBlock)));
+			}
 		}
 
 		public void WriteOutClass (Class dexClass, ClassDisplayOptions options, TextWriter output)
@@ -488,11 +494,11 @@ namespace dex.net
 				return string.Format("{1} = \"{2}\"", constStringOpCode.Name, GetRegisterName(constStringOpCode.Destination, method), _dex.GetString(constStringOpCode.StringIndex).Replace("\n", "\\n"));
 
 				case Instructions.ConstClass:
-				return string.Format("const-class {0} = {1}", GetRegisterName(((ConstClassOpCode)opcode).Destination, method), _dex.GetTypeName(((ConstClassOpCode)opcode).TypeIndex));
+				return string.Format("{0} = {1}", GetRegisterName(((ConstClassOpCode)opcode).Destination, method), _dex.GetTypeName(((ConstClassOpCode)opcode).TypeIndex));
 
 				case Instructions.CheckCast:
 				var typeCheckCast = _dex.GetTypeName(((CheckCastOpCode)opcode).TypeIndex);
-				return string.Format("check-cast v{0}, {1}", ((CheckCastOpCode)opcode).Destination, typeCheckCast);
+				return string.Format("({1}){0}", GetRegisterName(((CheckCastOpCode)opcode).Destination, method), typeCheckCast);
 
 				case Instructions.InstanceOf:
 				var typeInstanceOf = _dex.GetTypeName(((InstanceOfOpCode)opcode).TypeIndex);
